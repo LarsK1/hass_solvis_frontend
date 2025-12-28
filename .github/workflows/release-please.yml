@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Run release-please (manifest)
         id: rp
-        uses: googleapis/release-please-action
+        uses: googleapis/release-please-action@v4
         with:
           command: manifest
           token: ${{ secrets.GITHUB_TOKEN }}
