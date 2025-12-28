@@ -102,97 +102,136 @@ class SolvisCard extends HTMLElement {
     const { title, model, features } = this._config;
     const V = this._values || this._readEntityValues();
     const isMax = (model || '').toLowerCase() === 'max';
-    const svgPipes = `
-      <line x1="60" y1="120" x2="280" y2="120" stroke="#333" stroke-width="4"/>
-      <line x1="280" y1="120" x2="420" y2="120" stroke="#333" stroke-width="4"/>
-      <circle cx="140" cy="120" r="10" fill="${this._state.valveOpen ? '#4caf50' : '#f44336'}" />
-      <g class="pump" cursor="pointer" aria-label="Pump" tabindex="0" transform="translate(245,105)" role="button">
-        <circle cx="0" cy="0" r="14" fill="#2196f3" />
-        <polygon points="-4,-6 8,0 -4,6" fill="#fff"/>
-      </g>
-    `;
+    const circuits = Number(features.circuits || 0);
+    const pumpActive = Number(V.pumpSpeed) > 0 || this._state.pumpOn;
 
     const wi = (label, value, unit, x, y) => `
       <g transform="translate(${x},${y})">
-        <rect x="-38" y="-16" width="76" height="22" rx="4" fill="#fff" stroke="#ddd"/>
-        <text x="0" y="0" text-anchor="middle" font-size="11" fill="#111">${value}${unit}</text>
-        <text x="0" y="14" text-anchor="middle" font-size="9" fill="#666">${label}</text>
+        <rect x="-35" y="-12" width="70" height="24" rx="4" fill="rgba(255,255,255,0.9)" stroke="#ccc" stroke-width="1"/>
+        <text x="0" y="4" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">${value}${unit}</text>
+        <text x="0" y="24" text-anchor="middle" font-size="10" font-weight="500" fill="#555">${label}</text>
       </g>`;
 
+    // --- Dynamic SVG Components ---
+
+    const tank = `
+      <defs>
+        <linearGradient id="tankGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#d1d1d1;stop-opacity:1" />
+          <stop offset="50%" style="stop-color:#f8f8f8;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#d1d1d1;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect x="180" y="30" width="100" height="150" rx="15" fill="url(#tankGrad)" stroke="#888" stroke-width="2"/>
+      <path d="M 180 70 L 280 70 M 180 120 L 280 120" stroke="#aaa" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="230" y="25" text-anchor="middle" font-size="11" font-weight="bold" fill="#444" style="text-transform:uppercase; letter-spacing:1px;">Solvis${isMax ? 'Max' : 'Ben'}</text>
+    `;
+
+    const solar = features.solar ? `
+      <g transform="translate(350, 20)">
+        <rect x="0" y="0" width="80" height="50" fill="#2c3e50" stroke="#34495e" stroke-width="2" rx="2"/>
+        <path d="M 0 16 L 80 16 M 0 33 L 80 33 M 26 0 L 26 50 M 53 0 L 53 50" stroke="#5d6d7e" stroke-width="1"/>
+        <text x="40" y="-5" text-anchor="middle" font-size="10" fill="#555">Solar</text>
+        <circle cx="40" cy="25" r="15" fill="rgba(255, 235, 59, 0.2)">
+           <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+        </circle>
+      </g>
+      <path d="M 430 45 L 450 45 L 450 100 L 280 100" fill="none" stroke="#e67e22" stroke-width="3" stroke-linecap="round"/>
+      ${pumpActive ? '<circle r="3" fill="#e67e22"><animateMotion dur="3s" repeatCount="indefinite" path="M 430 45 L 450 45 L 450 100 L 280 100" /></circle>' : ''}
+    ` : '';
+
+    const heatPump = features.heat_pump ? `
+      <g transform="translate(380, 120)">
+        <rect x="0" y="0" width="100" height="60" rx="5" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
+        <circle cx="30" cy="30" r="20" fill="none" stroke="#bdc3c7" stroke-width="1"/>
+        <g class="fan">
+          <path d="M 30 15 L 30 45 M 15 30 L 45 30" stroke="#7f8c8d" stroke-width="3">
+            ${pumpActive ? '<animateTransform attributeName="transform" type="rotate" from="0 30 30" to="360 30 30" dur="2s" repeatCount="indefinite" />' : ''}
+          </path>
+        </g>
+        <text x="70" y="35" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">${V.pumpSpeed}%</text>
+        <text x="50" y="75" text-anchor="middle" font-size="10" fill="#555">WP</text>
+      </g>
+      <path d="M 380 150 L 280 150" fill="none" stroke="#2980b9" stroke-width="3"/>
+      ${pumpActive ? '<circle r="3" fill="#2980b9"><animateMotion dur="2s" repeatCount="indefinite" path="M 380 150 L 280 150" /></circle>' : ''}
+    ` : '';
+
+    const radiatorIcons = Array.from({ length: Math.min(Math.max(circuits, 0), 4) }, (_, i) => `
+      <g transform="translate(${25 + i * 40}, 140)">
+        <rect x="0" y="0" width="25" height="30" rx="2" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+        <path d="M 6 0 L 6 30 M 12 0 L 12 30 M 18 0 L 18 30" stroke="#dee2e6" stroke-width="1"/>
+        <text x="12" y="42" text-anchor="middle" font-size="8" fill="#666">HK ${i + 1}</text>
+        <path d="M 12 0 L 12 -20 L 180 ${-20 + i * 5}" fill="none" stroke="#c0392b" stroke-width="1.5" opacity="0.6"/>
+      </g>
+    `).join('');
+
+    const hotWater = features.hot_water ? `
+      <path d="M 230 30 L 230 15 L 120 15" fill="none" stroke="#e74c3c" stroke-width="3"/>
+      ${wi('Warmwasser', Number(V.hotWater).toFixed(1), '°C', 80, 15)}
+    ` : '';
+
     const smartGrid = features.smart_grid
-      ? `<div class="badge">Smart Grid · ${this._state.pumpOn ? 'Boost' : 'Normal'}</div>`
+      ? `<div class="badge ${this._state.pumpOn ? 'boost' : ''}">Smart Grid: ${this._state.pumpOn ? 'Boost' : 'Normal'}</div>`
       : '';
-
-    const heatPump = features.heat_pump
-      ? `<g>
-           <rect x="420" y="70" width="120" height="100" fill="#fafafa" stroke="#222"/>
-           <text x="480" y="95" text-anchor="middle" font-size="12">Heat Pump</text>
-           <rect x="430" y="105" width="60" height="50" fill="#ddd" stroke="#666"/>
-           <text x="490" y="140" font-size="11">${V.pumpSpeed}%</text>
-         </g>`
-      : '';
-
-    const solar = features.solar
-      ? `<g>
-           <polygon points="330,55 370,55 400,110 300,110" fill="#ffe082" stroke="#ffb300"/>
-           <text x="350" y="50" text-anchor="middle" font-size="11">Solar</text>
-         </g>`
-      : '';
-
-    const circuits = Number(features.circuits || 0);
-    const radiators = Array.from({ length: Math.min(Math.max(circuits, 0), 4) }, (_, i) =>
-      `<g transform="translate(${60 + i * 70},170)">
-         <rect x="0" y="0" width="40" height="28" fill="#eee" stroke="#555"/>
-         <text x="20" y="20" text-anchor="middle" font-size="9">HK ${i + 1}</text>
-       </g>`
-    ).join('');
 
     const headerRight = `${Number(V.outdoor).toFixed(1)}°C`;
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { --solvis-accent: #e53935; display:block; }
-        .wrapper { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-        .frame { border: 1px solid #d0d3d7; border-radius: 12px; background: #f4f6f8; box-shadow: inset 0 1px 2px rgba(0,0,0,0.06); }
-        .topbar { background: var(--solvis-accent); color: #fff; padding: 8px 10px; border-radius: 10px 10px 0 0; display:flex; justify-content: space-between; align-items:center; font-weight:600; }
-        .content { background:#fff; padding: 10px; border-radius: 0 0 10px 10px; }
-        svg { width: 100%; height: 230px; }
-        .badge { margin: 6px 0; background:#111; color:#fff; display:inline-block; padding:4px 8px; border-radius:6px; font-size:12px; }
-        .legend { display:flex; gap:14px; color:#666; font-size:12px; margin-top:6px; flex-wrap:wrap; }
-        .footer { display:flex; justify-content:space-between; align-items:center; margin-top:8px; color:#777; font-size:12px; }
-        button.small { font-size:12px; padding:4px 8px; }
+        :host { --solvis-accent: #e53935; --card-bg: #ffffff; display:block; }
+        .wrapper { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+        .frame { border: 1px solid #e0e0e0; border-radius: 12px; background: #fafafa; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .topbar { background: var(--solvis-accent); color: #fff; padding: 10px 16px; display:flex; justify-content: space-between; align-items:center; font-weight: 500; font-size: 14px; }
+        .content { background: var(--card-bg); padding: 16px; position: relative; }
+        svg { width: 100%; height: auto; max-height: 320px; display: block; }
+        .badge { margin-bottom: 12px; background:#455a64; color:#fff; display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight: bold; text-transform: uppercase; }
+        .badge.boost { background: #2e7d32; }
+        .legend { display:flex; gap:16px; color:#757575; font-size:12px; margin-top:12px; flex-wrap:wrap; border-top: 1px solid #eee; padding-top: 12px; }
+        .legend span { display: flex; align-items: center; gap: 4px; }
+        .legend span::before { content: '●'; color: var(--solvis-accent); opacity: 0.7; }
+        .footer { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top: 8px; }
+        .status-item { font-size: 13px; color: #444; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .dot { height: 8px; width: 8px; background-color: #bbb; border-radius: 50%; display: inline-block; }
+        .dot.active { background-color: #4caf50; box-shadow: 0 0 8px #4caf50; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        button.small { 
+          background: #fff; border: 1px solid #dcdcdc; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: #444; transition: all 0.2s;
+        }
+        button.small:hover { background: #f8f8f8; border-color: #c0c0c0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .fan { transform-origin: 30px 30px; }
       </style>
-      <ha-card header="${title}">
+      <ha-card>
         <div class="wrapper">
           <div class="frame">
             <div class="topbar">
               <div>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-              <div>${isMax ? 'Anlagenschema – Heizung' : 'Anlagenschema – Wärmepumpe'}</div>
-              <div>${headerRight}</div>
+              <div style="text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">${isMax ? 'SolvisMax' : 'SolvisBen'}</div>
+              <div>Aussen: ${headerRight}</div>
             </div>
             <div class="content">
               ${smartGrid}
-              <svg viewBox="0 0 560 210" part="diagram" aria-label="Solvis schema">
-                <g id="pipes">${svgPipes}</g>
-                ${heatPump}
+              <svg viewBox="0 0 500 220" part="diagram">
+                ${tank}
                 ${solar}
-                ${radiators}
-                ${wi('Boiler', Number(V.boiler).toFixed(1), '°C', 60, 80)}
-                ${wi('Warmwasser', Number(V.hotWater).toFixed(1), '°C', 220, 80)}
-                ${wi('Volumenstrom', Number(V.flowRate).toFixed(1), ' l/min', 300, 140)}
+                ${heatPump}
+                ${radiatorIcons}
+                ${hotWater}
+                ${wi('Speicher', Number(V.boiler).toFixed(1), '°C', 230, 80)}
+                ${wi('Vorlauf', Number(V.flowRate).toFixed(1), ' l/m', 330, 100)}
               </svg>
               <div class="legend">
                 <span>Model: ${model.toUpperCase()}</span>
-                ${features.hot_water ? '<span>Warmwasser</span>' : ''}
-                ${features.heat_pump ? '<span>WP</span>' : ''}
-                ${features.solar ? '<span>Solar</span>' : ''}
-                ${features.smart_grid ? '<span>Smart Grid</span>' : ''}
+                ${features.hot_water ? '<span>Frischwasser</span>' : ''}
+                ${features.heat_pump ? '<span>WP-Modul</span>' : ''}
+                ${features.solar ? '<span>Solar-Modul</span>' : ''}
+                ${features.smart_grid ? '<span>SG Ready</span>' : ''}
               </div>
               <div class="footer">
-                <div>Pump: ${this._state.pumpOn ? 'On' : 'Off'}</div>
-                <div>
-                  <button class="small" id="btn-pump">Toggle pump</button>
+                <div class="status-item">
+                  <span class="dot ${this._state.pumpOn ? 'active' : ''}"></span>
+                  Heizpumpe: ${this._state.pumpOn ? 'Aktiv' : 'Bereit'}
                 </div>
+                <button class="small" id="btn-pump">${this._state.pumpOn ? 'AUS' : 'AN'}</button>
               </div>
             </div>
           </div>
@@ -201,8 +240,6 @@ class SolvisCard extends HTMLElement {
     `;
 
     // Bind interactivity
-    const pump = this.shadowRoot.querySelector('.pump');
-    if (pump) pump.addEventListener('click', () => this._togglePump());
     const btn = this.shadowRoot.getElementById('btn-pump');
     if (btn) btn.onclick = () => this._togglePump();
   }
