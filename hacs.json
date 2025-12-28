@@ -1,0 +1,7 @@
+{
+  "name": "Solvis Control Card for HomeAssistant",
+  "content_in_root": false,
+  "render_readme": true,
+  "filename": "solvis-card.js",
+  "homeassistant": "2025.10.0"
+}
