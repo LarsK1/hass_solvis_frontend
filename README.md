@@ -1,2 +1,64 @@
-# hass_solvis_frontend
-Frontend-module for Solvis Control Integration for HomeAssistant
+# hass_solvis_frontend – Solvis Control Card
+
+A Home Assistant Lovelace custom card that visualizes Solvis devices (Ben/Max, Solar/Heating/Water) with an interactive SVG UI. The card includes a GUI config editor, supports multiple device models and optional features, and comes with Playwright end‑to‑end tests.
+
+## Installation
+
+- HACS: Add this repository as a custom repository in HACS (Category: Plugin). Install the card.
+- Manual: Copy `solvis-card.js` and the `src` folder to `/config/www/solvis-card/` (or `/www`).
+
+Add to your Lovelace resources:
+
+```
+url: /hacsfiles/hass_solvis_frontend/solvis-card.js
+type: module
+```
+
+## Usage
+
+Add a card and search for “Solvis Control Card”, or use YAML:
+
+```
+type: custom:solvis-card
+title: Solvis
+model: ben            # ben | max | auto
+features:
+  solar: true
+  heat_pump: true
+  hot_water: true
+  smart_grid: false
+  circuits: 2         # number of heating circuits
+entities:
+  outdoor_temperature: sensor.outdoor_temp
+  hot_water_temperature: sensor.hot_water_temp
+  flow_rate: sensor.flow_rate
+  pump_speed: sensor.pump_speed
+  boiler_temperature: sensor.boiler_temp
+```
+
+You can also configure everything from the built‑in GUI editor.
+
+## Development
+
+This repository uses plain ES modules (no build step) and Playwright for e2e tests.
+
+Run tests locally:
+
+```
+npm install
+npx playwright install
+npm run test:e2e
+```
+
+Open the demo page for local debugging:
+
+```
+npx serve . -p 5500
+# Then open http://localhost:5500/tests/demo/index.html
+```
+
+## Roadmap
+
+- Auto‑detect features by reading entities/device info from the backend integration.
+- More detailed schemas for each Solvis model.
+- Service calls for toggling actuators when entities are provided.

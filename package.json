@@ -1,0 +1,19 @@
+{
+  "name": "hass-solvis-frontend",
+  "version": "0.1.0",
+  "description": "Home Assistant custom Lovelace card that visualizes Solvis devices (Ben/Max, Solar/Heating/Water) with an interactive SVG UI and a GUI config editor.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "test": "npm run test:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "build": "echo No build step; ES modules in src"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "eslint": "^9.14.0",
+    "serve": "^14.2.3"
+  }
+}

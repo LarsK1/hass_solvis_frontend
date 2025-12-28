@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solvis Card Demo</title>
+    <script type="module" src="../../solvis-card.js"></script>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; }
+      #app { max-width: 780px; margin:auto; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script>
+      // Minimal Home Assistant mock to host the card in a static page
+      const hass = {
+        states: {
+          'sensor.outdoor_temp': { state: '9.5' },
+          'sensor.hot_water_temp': { state: '49.1' },
+          'sensor.flow_rate': { state: '10.7' },
+          'sensor.pump_speed': { state: '47' },
+          'sensor.boiler_temp': { state: '42.7' },
+        },
+      };
+
+      const card = document.createElement('solvis-card');
+      card.setConfig({
+        title: 'Solvis (Demo)',
+        model: 'ben',
+        features: { solar: true, heat_pump: true, hot_water: true, smart_grid: true, circuits: 2 },
+        entities: {
+          outdoor_temperature: 'sensor.outdoor_temp',
+          hot_water_temperature: 'sensor.hot_water_temp',
+          flow_rate: 'sensor.flow_rate',
+          pump_speed: 'sensor.pump_speed',
+          boiler_temperature: 'sensor.boiler_temp',
+        },
+      });
+      card.hass = hass;
+      document.getElementById('app').appendChild(card);
+    </script>
+  </body>
+  </html>
