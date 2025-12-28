@@ -31,6 +31,10 @@ jobs:
     # Run only when Release Please opened/updated a PR (outputs.pr is the PR number)
     if: ${{ needs.release-please.outputs.pr != '' }}
     steps:
+      - name: Debug release-please outputs
+        run: |
+          echo "Release Please PR number: ${{ needs.release-please.outputs.pr }}"
+          echo "Release created flag: ${{ needs.release-please.outputs.release_created }}"
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
