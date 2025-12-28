@@ -13,7 +13,7 @@
   <body>
     <div id="app"></div>
 
-    <script>
+    <script type="module">
       // Minimal Home Assistant mock to host the card in a static page
       const hass = {
         states: {
@@ -25,6 +25,11 @@
         },
       };
 
+      // Wait for the custom element to be defined before creating it
+      // Although with type="module" this script should run after the src module above.
+      // Just to be safe and explicit about dependency, we can import it here too or rely on order.
+      // Since both are modules, they execute in order.
+      
       const card = document.createElement('solvis-card');
       card.setConfig({
         title: 'Solvis (Demo)',
