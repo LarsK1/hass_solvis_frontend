@@ -3,24 +3,27 @@ import {expect, test} from '@playwright/test';
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(`${baseURL}/tests/demo/index.html`);
-  await expect(page.locator('solvis-card')).toBeVisible();
+  await expect(page.locator('solvis-card').first()).toBeVisible();
 });
 
 test('renders header and diagram', async ({ page }) => {
-  await expect(page.locator('ha-card')).toBeVisible();
-  await expect(page.locator('svg[part="diagram"]')).toBeVisible();
-  await expect(page.getByText('Solvis (Demo)')).toBeVisible();
+  await expect(page.locator('ha-card').first()).toBeVisible();
+  await expect(page.locator('svg[part="diagram"]').first()).toBeVisible();
+  // Check for one of the titles in the demo
+  await expect(page.getByText('SOLVIS HEATING')).toBeVisible();
 });
 
 test('shows smart grid badge when enabled', async ({ page }) => {
-  await expect(page.getByText('Smart Grid', { exact: true })).toBeVisible();
+  // Smart Grid is enabled in the demo cards
+  await expect(page.getByText('Smart Grid', { exact: false }).first()).toBeVisible();
 });
 
 test('toggle pump updates footer text', async ({ page }) => {
-  const footer = page.locator('solvis-card').locator('.footer');
-  await expect(footer).toContainText('Off');
-  await page.locator('solvis-card').locator('.pump').click();
-  await expect(footer).toContainText('On');
+  const card = page.locator('solvis-card').first();
+  const footer = card.locator('.footer');
+  await expect(footer).toContainText('Bereit');
+  await card.locator('#btn-pump').click();
+  await expect(footer).toContainText('Aktiv');
 });
 
 test('editor emits config-changed on changes', async ({ page }) => {
