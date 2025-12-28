@@ -1,5 +1,5 @@
 # hass_solvis_frontend – Solvis Control Card
-## 0.1.0 — 2025-12-28
+## 0.1.1 — 2025-12-28
 
 
 A Home Assistant Lovelace custom card that visualizes Solvis devices (Ben/Max, Solar/Heating/Water) with an interactive SVG UI. The card includes a GUI config editor, supports multiple device models and optional features, and comes with Playwright end‑to‑end tests.

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file by Release Please.
 
-## [0.1.1](https://github.com/LarsK1/hass_solvis_frontend/compare/hass-solvis-frontend-v0.1.0...hass-solvis-frontend-v0.1.1) (2025-12-28)
+## 0.1.1 — 2025-12-28
 
 
 ### Bug Fixes

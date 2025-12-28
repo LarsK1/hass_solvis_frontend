@@ -1,4 +1,4 @@
-// Version: 0.1.0 — 2025-12-28
+// Version: 0.1.1 — 2025-12-28
 import {defineConfig, devices} from '@playwright/test';
 
 export default defineConfig({
