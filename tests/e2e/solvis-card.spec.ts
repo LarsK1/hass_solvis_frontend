@@ -12,13 +12,13 @@ test('renders header and diagram', async ({ page }) => {
 });
 
 test('shows smart grid badge when enabled', async ({ page }) => {
-  await expect(page.getByText(/Smart Grid/)).toBeVisible();
+  await expect(page.getByText('Smart Grid', { exact: true })).toBeVisible();
 });
 
 test('toggle pump updates footer text', async ({ page }) => {
-  const footer = page.locator('solvis-card').locator('shadow=.footer');
+  const footer = page.locator('solvis-card').locator('.footer');
   await expect(footer).toContainText('Off');
-  await page.locator('solvis-card').locator('shadow=.pump').click();
+  await page.locator('solvis-card').locator('.pump').click();
   await expect(footer).toContainText('On');
 });
 
