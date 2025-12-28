@@ -28,55 +28,88 @@ jobs:
     name: Decorate release PR with version headers
     runs-on: ubuntu-latest
     needs: release-please
-    # Run only when Release Please opened/updated a PR (outputs.pr is the PR number)
-    if: ${{ needs.release-please.outputs.pr != '' }}
+    # Run if a PR was created/updated OR if a release was created
+    if: ${{ needs.release-please.outputs.pr != '' || needs.release-please.outputs.release_created == 'true' }}
     steps:
       - name: Debug release-please outputs
         run: |
-          echo "Release Please PR number: ${{ needs.release-please.outputs.pr }}"
+          echo "Release Please PR: ${{ needs.release-please.outputs.pr }}"
           echo "Release created flag: ${{ needs.release-please.outputs.release_created }}"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve PR head branch
-        id: prinfo
+      - name: Resolve target branch
+        id: target
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = Number(process.env.PR_NUMBER);
-            const { data: pr } = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
-            core.setOutput('ref', pr.head.ref);
-            core.setOutput('repo', pr.head.repo.full_name);
-          result-encoding: string
+            const prRaw = process.env.PR_JSON;
+            const releaseCreated = process.env.RELEASE_CREATED === 'true';
+            
+            let targetRef = '';
+            
+            if (prRaw) {
+              try {
+                const pr = JSON.parse(prRaw);
+                const prNumber = pr.number || pr;
+                const { data: pull } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+                targetRef = pull.head.ref;
+              } catch (e) {
+                console.error('Failed to parse PR JSON:', e);
+              }
+            }
+            
+            if (!targetRef && releaseCreated) {
+              // Fallback to current branch (main) if release was created
+              targetRef = context.ref.replace('refs/heads/', '');
+            }
+            
+            if (targetRef) {
+              core.setOutput('ref', targetRef);
+              core.setOutput('should_run', 'true');
+            } else {
+              core.setOutput('should_run', 'false');
+            }
         env:
-          PR_NUMBER: ${{ needs.release-please.outputs.pr }}
+          PR_JSON: ${{ needs.release-please.outputs.pr }}
+          RELEASE_CREATED: ${{ needs.release-please.outputs.release_created }}
 
-      - name: Checkout PR branch
+      - name: Checkout target branch
+        if: steps.target.outputs.should_run == 'true'
         run: |
-          git fetch origin "${{ steps.prinfo.outputs.ref }}:${{ steps.prinfo.outputs.ref }}" || true
-          git checkout "${{ steps.prinfo.outputs.ref }}"
+          git fetch origin "${{ steps.target.outputs.ref }}:${{ steps.target.outputs.ref }}" || true
+          git checkout "${{ steps.target.outputs.ref }}"
 
       - uses: actions/setup-node@v4
+        if: steps.target.outputs.should_run == 'true'
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        if: steps.target.outputs.should_run == 'true'
         run: npm ci
 
       - name: Update version headers
+        if: steps.target.outputs.should_run == 'true'
         run: node scripts/update-headers.mjs
 
       - name: Commit changes (if any)
+        if: steps.target.outputs.should_run == 'true'
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -A
             git commit -m "chore: update version headers to match release"
-            git push
+            git push origin "${{ steps.target.outputs.ref }}"
           else
             echo "No header changes to commit."
           fi
