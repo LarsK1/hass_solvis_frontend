@@ -2,6 +2,8 @@
 
 A Home Assistant Lovelace custom card that visualizes Solvis devices (Ben/Max, Solar/Heating/Water) with an interactive SVG UI. The card includes a GUI config editor, supports multiple device models and optional features, and comes with Playwright end‑to‑end tests.
 
+![img.png](img.png)
+
 ## Installation
 
 - HACS: Add this repository as a custom repository in HACS (Category: Plugin). Install the card.
