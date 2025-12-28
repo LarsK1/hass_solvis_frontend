@@ -8,6 +8,8 @@ const DEFAULT_CONFIG = {
   type: 'custom:solvis-card',
   title: 'Solvis',
   model: 'ben', // 'ben' | 'max' | 'auto'
+  mode: 'both', // 'heating' | 'hot_water' | 'both'
+  show_legend: false,
   features: {
     solar: true,
     heat_pump: true,
@@ -99,11 +101,14 @@ class SolvisCard extends HTMLElement {
   }
 
   _render() {
-    const { title, model, features } = this._config;
+    const { title, model, features, mode = 'both', show_legend = false } = this._config;
     const V = this._values || this._readEntityValues();
     const isMax = (model || '').toLowerCase() === 'max';
     const circuits = Number(features.circuits || 0);
     const pumpActive = Number(V.pumpSpeed) > 0 || this._state.pumpOn;
+
+    const showHeating = mode === 'both' || mode === 'heating';
+    const showHotWater = mode === 'both' || mode === 'hot_water';
 
     const wi = (label, value, unit, x, y) => `
       <g transform="translate(${x},${y})">
@@ -127,7 +132,7 @@ class SolvisCard extends HTMLElement {
       <text x="230" y="25" text-anchor="middle" font-size="11" font-weight="bold" fill="#444" style="text-transform:uppercase; letter-spacing:1px;">Solvis${isMax ? 'Max' : 'Ben'}</text>
     `;
 
-    const solar = features.solar ? `
+    const solar = (features.solar && showHeating) ? `
       <g transform="translate(350, 20)">
         <rect x="0" y="0" width="80" height="50" fill="#2c3e50" stroke="#34495e" stroke-width="2" rx="2"/>
         <path d="M 0 16 L 80 16 M 0 33 L 80 33 M 26 0 L 26 50 M 53 0 L 53 50" stroke="#5d6d7e" stroke-width="1"/>
@@ -140,7 +145,7 @@ class SolvisCard extends HTMLElement {
       ${pumpActive ? '<circle r="3" fill="#e67e22"><animateMotion dur="3s" repeatCount="indefinite" path="M 430 45 L 450 45 L 450 100 L 280 100" /></circle>' : ''}
     ` : '';
 
-    const heatPump = features.heat_pump ? `
+    const heatPump = (features.heat_pump && showHeating) ? `
       <g transform="translate(380, 120)">
         <rect x="0" y="0" width="100" height="60" rx="5" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
         <circle cx="30" cy="30" r="20" fill="none" stroke="#bdc3c7" stroke-width="1"/>
@@ -156,25 +161,27 @@ class SolvisCard extends HTMLElement {
       ${pumpActive ? '<circle r="3" fill="#2980b9"><animateMotion dur="2s" repeatCount="indefinite" path="M 380 150 L 280 150" /></circle>' : ''}
     ` : '';
 
-    const radiatorIcons = Array.from({ length: Math.min(Math.max(circuits, 0), 4) }, (_, i) => `
+    const radiatorIcons = showHeating ? Array.from({ length: Math.min(Math.max(circuits, 0), 4) }, (_, i) => `
       <g transform="translate(${25 + i * 40}, 140)">
         <rect x="0" y="0" width="25" height="30" rx="2" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
         <path d="M 6 0 L 6 30 M 12 0 L 12 30 M 18 0 L 18 30" stroke="#dee2e6" stroke-width="1"/>
         <text x="12" y="42" text-anchor="middle" font-size="8" fill="#666">HK ${i + 1}</text>
         <path d="M 12 0 L 12 -20 L 180 ${-20 + i * 5}" fill="none" stroke="#c0392b" stroke-width="1.5" opacity="0.6"/>
       </g>
-    `).join('');
+    `).join('') : '';
 
-    const hotWater = features.hot_water ? `
+    const hotWater = (features.hot_water && showHotWater) ? `
       <path d="M 230 30 L 230 15 L 120 15" fill="none" stroke="#e74c3c" stroke-width="3"/>
       ${wi('Warmwasser', Number(V.hotWater).toFixed(1), '°C', 80, 15)}
     ` : '';
 
-    const smartGrid = features.smart_grid
+    const smartGrid = (features.smart_grid && showHeating)
       ? `<div class="badge ${this._state.pumpOn ? 'boost' : ''}">Smart Grid: ${this._state.pumpOn ? 'Boost' : 'Normal'}</div>`
       : '';
 
     const headerRight = `${Number(V.outdoor).toFixed(1)}°C`;
+    const subTitle = mode === 'heating' ? 'Heizung' : mode === 'hot_water' ? 'Warmwasser' : (isMax ? 'SolvisMax' : 'SolvisBen');
+    const footerLabel = mode === 'hot_water' ? 'WW-Ladepumpe' : 'Heizpumpe';
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -205,7 +212,7 @@ class SolvisCard extends HTMLElement {
           <div class="frame">
             <div class="topbar">
               <div>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-              <div style="text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">${isMax ? 'SolvisMax' : 'SolvisBen'}</div>
+              <div style="text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">${subTitle}</div>
               <div>Aussen: ${headerRight}</div>
             </div>
             <div class="content">
@@ -217,19 +224,20 @@ class SolvisCard extends HTMLElement {
                 ${radiatorIcons}
                 ${hotWater}
                 ${wi('Speicher', Number(V.boiler).toFixed(1), '°C', 230, 80)}
-                ${wi('Vorlauf', Number(V.flowRate).toFixed(1), ' l/m', 330, 100)}
+                ${showHeating ? wi('Vorlauf', Number(V.flowRate).toFixed(1), ' l/m', 330, 100) : ''}
               </svg>
+              ${show_legend ? `
               <div class="legend">
                 <span>Model: ${model.toUpperCase()}</span>
-                ${features.hot_water ? '<span>Frischwasser</span>' : ''}
-                ${features.heat_pump ? '<span>WP-Modul</span>' : ''}
-                ${features.solar ? '<span>Solar-Modul</span>' : ''}
-                ${features.smart_grid ? '<span>SG Ready</span>' : ''}
-              </div>
+                ${(features.hot_water && showHotWater) ? '<span>Frischwasser</span>' : ''}
+                ${(features.heat_pump && showHeating) ? '<span>WP-Modul</span>' : ''}
+                ${(features.solar && showHeating) ? '<span>Solar-Modul</span>' : ''}
+                ${(features.smart_grid && showHeating) ? '<span>SG Ready</span>' : ''}
+              </div>` : ''}
               <div class="footer">
                 <div class="status-item">
                   <span class="dot ${this._state.pumpOn ? 'active' : ''}"></span>
-                  Heizpumpe: ${this._state.pumpOn ? 'Aktiv' : 'Bereit'}
+                  ${footerLabel}: ${this._state.pumpOn ? 'Aktiv' : 'Bereit'}
                 </div>
                 <button class="small" id="btn-pump">${this._state.pumpOn ? 'AUS' : 'AN'}</button>
               </div>
@@ -288,6 +296,16 @@ class SolvisCardEditor extends HTMLElement {
               ${['auto','ben','max'].map(m => `<option value="${m}" ${c.model===m?'selected':''}>${m.toUpperCase()}</option>`).join('')}
             </select>
           </div>
+          <div class="row">
+            <label>Card Mode</label>
+            <select id="mode">
+              ${['both', 'heating', 'hot_water'].map(m => `<option value="${m}" ${c.mode === m ? 'selected' : ''}>${m.toUpperCase()}</option>`).join('')}
+            </select>
+          </div>
+          <div class="row">
+            <label>Show Legend</label>
+            <input id="show_legend" type="checkbox" ${c.show_legend ? 'checked' : ''} />
+          </div>
         </fieldset>
         <fieldset>
           <legend>Features</legend>
@@ -314,6 +332,8 @@ class SolvisCardEditor extends HTMLElement {
     const byId = (id) => this.shadowRoot.getElementById(id);
     byId('title').oninput = (e) => { this._config.title = e.target.value; this._emit(); };
     byId('model').onchange = (e) => { this._config.model = e.target.value; this._emit(); };
+    byId('mode').onchange = (e) => { this._config.mode = e.target.value; this._emit(); };
+    byId('show_legend').onchange = (e) => { this._config.show_legend = !!e.target.checked; this._emit(); };
     byId('circuits').oninput = (e) => { this._config.features.circuits = Number(e.target.value || 0); this._emit(); };
     for (const key of ['solar','heat_pump','hot_water','smart_grid']) {
       const el = byId(`f-${key}`);
@@ -350,6 +370,20 @@ window.customCards.push({
   type: 'solvis-card',
   name: 'Solvis Control Card',
   description: 'Interactive schema for Solvis devices (Ben/Max) with optional Solar, Heat Pump, and Hot Water.',
+  preview: true,
+});
+
+window.customCards.push({
+  type: 'solvis-card',
+  name: 'Solvis Heating Card',
+  description: 'Heating-focused view for Solvis systems.',
+  preview: true,
+});
+
+window.customCards.push({
+  type: 'solvis-card',
+  name: 'Solvis Hot Water Card',
+  description: 'Hot water production view for Solvis systems.',
   preview: true,
 });
 

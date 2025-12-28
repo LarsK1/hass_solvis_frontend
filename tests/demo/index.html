@@ -9,12 +9,18 @@
     <title>Solvis Card Demo</title>
     <script type="module" src="../../solvis-card.js"></script>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; }
-      #app { max-width: 780px; margin:auto; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; background: #f0f2f5; }
+      #app { max-width: 900px; margin:auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .full-width { grid-column: 1 / -1; }
+      @media (max-width: 800px) { #app { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="full-width">
+        <h1 style="text-align: center; color: #333;">Solvis Card Multi-Mode Demo</h1>
+      </div>
+    </div>
 
     <script type="module">
       // Mock ha-card
@@ -53,9 +59,7 @@
       // Just to be safe and explicit about dependency, we can import it here too or rely on order.
       // Since both are modules, they execute in order.
       
-      const card = document.createElement('solvis-card');
-      card.setConfig({
-        title: 'Solvis (Demo)',
+      const commonConfig = {
         model: 'ben',
         features: { solar: true, heat_pump: true, hot_water: true, smart_grid: true, circuits: 2 },
         entities: {
@@ -65,9 +69,29 @@
           pump_speed: 'sensor.pump_speed',
           boiler_temperature: 'sensor.boiler_temp',
         },
-      });
-      card.hass = hass;
-      document.getElementById('app').appendChild(card);
+      };
+
+      // 1. Heating Card
+      const heatingCard = document.createElement('solvis-card');
+      heatingCard.setConfig({ ...commonConfig, title: 'Solvis Heating', mode: 'heating' });
+      heatingCard.hass = hass;
+      document.getElementById('app').appendChild(heatingCard);
+
+      // 2. Hot Water Card
+      const hotWaterCard = document.createElement('solvis-card');
+      hotWaterCard.setConfig({ ...commonConfig, title: 'Solvis Hot Water', mode: 'hot_water' });
+      hotWaterCard.hass = hass;
+      document.getElementById('app').appendChild(hotWaterCard);
+
+      // 3. Combined Card (Full Width)
+      const combinedCard = document.createElement('solvis-card');
+      combinedCard.setConfig({ ...commonConfig, title: 'Solvis Full System', mode: 'both' });
+      combinedCard.hass = hass;
+      const fullWidthDiv = document.createElement('div');
+      fullWidthDiv.className = 'full-width';
+      fullWidthDiv.style.marginTop = '20px';
+      fullWidthDiv.appendChild(combinedCard);
+      document.getElementById('app').appendChild(fullWidthDiv);
     </script>
   </body>
   </html>
