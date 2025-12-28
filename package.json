@@ -9,7 +9,8 @@
     "test": "npm run test:e2e",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "build": "echo No build step; ES modules in src"
+    "build": "echo No build step; ES modules in src",
+    "update:headers": "node scripts/update-headers.mjs"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",

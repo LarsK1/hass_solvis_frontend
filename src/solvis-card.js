@@ -1,3 +1,4 @@
+// Version: 0.1.0 — 2025-12-28
 /*
   Solvis Control Card – lightweight Web Component that works as a
   Home Assistant Lovelace card. No build step required.
