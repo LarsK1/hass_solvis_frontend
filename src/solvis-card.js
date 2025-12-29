@@ -38,6 +38,8 @@ const DEFAULT_CONFIG = {
     buffer_top_temp: '',
     buffer_bottom_temp: '',
     hc_pump_status: '',
+    hc2_pump_status: '',
+    hc3_pump_status: '',
     storage_ref_temp: '',
   },
 };
@@ -130,7 +132,7 @@ class SolvisCard extends HTMLElement {
                 { name: 'smart_grid', selector: { boolean: {} } },
               ],
             },
-            { name: 'circuits', selector: { number: { min: 0, max: 4, mode: 'box' } } },
+            { name: 'circuits', selector: { number: { min: 0, max: 3, mode: 'box' } } },
           ],
         },
         {
@@ -158,6 +160,8 @@ class SolvisCard extends HTMLElement {
             { name: 'buffer_top_temp', selector: { entity: {} } },
             { name: 'buffer_bottom_temp', selector: { entity: {} } },
             { name: 'hc_pump_status', selector: { entity: {} } },
+            { name: 'hc2_pump_status', selector: { entity: {} } },
+            { name: 'hc3_pump_status', selector: { entity: {} } },
             { name: 'storage_ref_temp', selector: { entity: {} } },
           ],
         },
@@ -201,6 +205,8 @@ class SolvisCard extends HTMLElement {
       bufferTop: read(e.buffer_top_temp, '55.0'),
       bufferBottom: read(e.buffer_bottom_temp, '35.0'),
       hcPump: read(e.hc_pump_status, 'off'),
+      hc2Pump: read(e.hc2_pump_status, 'off'),
+      hc3Pump: read(e.hc3_pump_status, 'off'),
       storageRef: read(e.storage_ref_temp, '45.0'),
     };
   }
@@ -218,6 +224,8 @@ class SolvisCard extends HTMLElement {
     const pumpActive = Number(V.pumpSpeed) > 0 || this._state.pumpOn;
     const burnerActive = String(V.burnerStatus).toLowerCase() === 'on' || V.burnerStatus === '1' || V.burnerStatus === true || Number(V.burnerMod) > 0;
     const hcPumpActive = String(V.hcPump).toLowerCase() === 'on' || V.hcPump === '1' || V.hcPump === true;
+    const hc2PumpActive = String(V.hc2Pump).toLowerCase() === 'on' || V.hc2Pump === '1' || V.hc2Pump === true;
+    const hc3PumpActive = String(V.hc3Pump).toLowerCase() === 'on' || V.hc3Pump === '1' || V.hc3Pump === true;
 
     const showHeating = mode === 'both' || mode === 'heating';
     const showHotWater = mode === 'both' || mode === 'hot_water';
@@ -289,19 +297,21 @@ class SolvisCard extends HTMLElement {
       ${pumpActive ? '<circle r="3" fill="#2980b9"><animateMotion dur="2s" repeatCount="indefinite" path="M 380 150 L 280 150" /></circle>' : ''}
     ` : '';
 
-    const radiatorIcons = showHeating ? Array.from({ length: Math.min(Math.max(circuits, 0), 4) }, (_, i) => `
+    const radiatorIcons = showHeating ? Array.from({ length: Math.min(Math.max(circuits, 0), 3) }, (_, i) => {
+      const isActive = i === 0 ? hcPumpActive : i === 1 ? hc2PumpActive : i === 2 ? hc3PumpActive : false;
+      return `
       <g transform="translate(${25 + i * 40}, 140)">
         <rect x="0" y="0" width="25" height="30" rx="2" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
         <path d="M 6 0 L 6 30 M 12 0 L 12 30 M 18 0 L 18 30" stroke="#dee2e6" stroke-width="1"/>
         <text x="12" y="42" text-anchor="middle" font-size="8" fill="#666">HK ${i + 1}</text>
         <path d="M 12 0 L 12 -20 L 180 ${-20 + i * 5}" fill="none" stroke="#c0392b" stroke-width="1.5" opacity="0.6"/>
-        ${(i === 0 && hcPumpActive) ? `
+        ${isActive ? `
           <circle cx="12" cy="15" r="8" fill="none" stroke="#4caf50" stroke-width="1.5" stroke-dasharray="2,2">
             <animateTransform attributeName="transform" type="rotate" from="0 12 15" to="360 12 15" dur="3s" repeatCount="indefinite" />
           </circle>
         ` : ''}
       </g>
-    `).join('') : '';
+    `}).join('') : '';
 
     const circModeMap = {
       '0': 'Aus',
