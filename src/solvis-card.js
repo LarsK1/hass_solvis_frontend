@@ -52,8 +52,6 @@ class SolvisCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // Update dynamic values from entities if available
-    this._values = this._readEntityValues();
     this._scheduleRender();
   }
 
@@ -66,8 +64,73 @@ class SolvisCard extends HTMLElement {
     return DEFAULT_CONFIG;
   }
 
-  static getConfigElement() {
-    return document.createElement('solvis-card-editor');
+  static getConfigForm() {
+    return {
+      schema: [
+        { name: 'title', selector: { text: {} } },
+        {
+          name: '',
+          type: 'grid',
+          schema: [
+            {
+              name: 'model',
+              selector: {
+                select: {
+                  options: [
+                    { value: 'auto', label: 'AUTO' },
+                    { value: 'ben', label: 'BEN' },
+                    { value: 'max', label: 'MAX' },
+                  ],
+                },
+              },
+            },
+            {
+              name: 'mode',
+              selector: {
+                select: {
+                  options: [
+                    { value: 'both', label: 'BOTH' },
+                    { value: 'heating', label: 'HEATING' },
+                    { value: 'hot_water', label: 'HOT_WATER' },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        { name: 'show_legend', selector: { boolean: {} } },
+        {
+          name: 'features',
+          type: 'expandable',
+          title: 'Features',
+          schema: [
+            {
+              name: '',
+              type: 'grid',
+              schema: [
+                { name: 'solar', selector: { boolean: {} } },
+                { name: 'heat_pump', selector: { boolean: {} } },
+                { name: 'hot_water', selector: { boolean: {} } },
+                { name: 'smart_grid', selector: { boolean: {} } },
+              ],
+            },
+            { name: 'circuits', selector: { number: { min: 0, max: 4, mode: 'box' } } },
+          ],
+        },
+        {
+          name: 'entities',
+          type: 'expandable',
+          title: 'Entities',
+          schema: [
+            { name: 'outdoor_temperature', selector: { entity: {} } },
+            { name: 'hot_water_temperature', selector: { entity: {} } },
+            { name: 'flow_rate', selector: { entity: {} } },
+            { name: 'pump_speed', selector: { entity: {} } },
+            { name: 'boiler_temperature', selector: { entity: {} } },
+          ],
+        },
+      ],
+    };
   }
 
   getCardSize() {
@@ -96,13 +159,12 @@ class SolvisCard extends HTMLElement {
 
   _togglePump() {
     this._state.pumpOn = !this._state.pumpOn;
-    this._values = this._readEntityValues();
     this._scheduleRender();
   }
 
   _render() {
     const { title, model, features, mode = 'both', show_legend = false } = this._config;
-    const V = this._values || this._readEntityValues();
+    const V = this._readEntityValues();
     const isMax = (model || '').toLowerCase() === 'max';
     const circuits = Number(features.circuits || 0);
     const pumpActive = Number(V.pumpSpeed) > 0 || this._state.pumpOn;
@@ -255,115 +317,6 @@ class SolvisCard extends HTMLElement {
 
 customElements.define('solvis-card', SolvisCard);
 
-// GUI editor – basic form
-class SolvisCardEditor extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this._config = structuredClone(DEFAULT_CONFIG);
-  }
-
-  set hass(hass) { this._hass = hass; }
-
-  setConfig(config) {
-    this._config = deepMerge(DEFAULT_CONFIG, config || {});
-    this._render();
-  }
-
-  _emit() { this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config } })); }
-
-  _render() {
-    const c = this._config;
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; display:block; }
-        fieldset { border: 1px solid #ddd; border-radius: 6px; margin: 0 0 10px; }
-        legend { color:#444; }
-        .row { display:flex; gap:10px; align-items:center; margin:6px 0; }
-        label { min-width: 130px; color:#333; }
-        input[type="text"], select, input[type="number"] { flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; }
-      </style>
-      <div class="editor">
-        <fieldset>
-          <legend>General</legend>
-          <div class="row">
-            <label>Title</label>
-            <input id="title" type="text" value="${c.title}" />
-          </div>
-          <div class="row">
-            <label>Model</label>
-            <select id="model">
-              ${['auto','ben','max'].map(m => `<option value="${m}" ${c.model===m?'selected':''}>${m.toUpperCase()}</option>`).join('')}
-            </select>
-          </div>
-          <div class="row">
-            <label>Card Mode</label>
-            <select id="mode">
-              ${['both', 'heating', 'hot_water'].map(m => `<option value="${m}" ${c.mode === m ? 'selected' : ''}>${m.toUpperCase()}</option>`).join('')}
-            </select>
-          </div>
-          <div class="row">
-            <label>Show Legend</label>
-            <input id="show_legend" type="checkbox" ${c.show_legend ? 'checked' : ''} />
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Features</legend>
-          ${this._checkbox('solar', c.features.solar, 'Solar')}
-          ${this._checkbox('heat_pump', c.features.heat_pump, 'Heat pump')}
-          ${this._checkbox('hot_water', c.features.hot_water, 'Hot water')}
-          ${this._checkbox('smart_grid', c.features.smart_grid, 'Smart grid')}
-          <div class="row">
-            <label>Heating circuits</label>
-            <input id="circuits" type="number" min="0" max="4" value="${Number(c.features.circuits || 0)}" />
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Entities (optional)</legend>
-          ${this._text('outdoor_temperature', c.entities.outdoor_temperature, 'sensor.outdoor_temperature')}
-          ${this._text('hot_water_temperature', c.entities.hot_water_temperature, 'sensor.hot_water_temperature')}
-          ${this._text('flow_rate', c.entities.flow_rate, 'sensor.flow_rate')}
-          ${this._text('pump_speed', c.entities.pump_speed, 'sensor.pump_speed')}
-          ${this._text('boiler_temperature', c.entities.boiler_temperature, 'sensor.boiler_temperature')}
-        </fieldset>
-      </div>
-    `;
-
-    const byId = (id) => this.shadowRoot.getElementById(id);
-    byId('title').oninput = (e) => { this._config.title = e.target.value; this._emit(); };
-    byId('model').onchange = (e) => { this._config.model = e.target.value; this._emit(); };
-    byId('mode').onchange = (e) => { this._config.mode = e.target.value; this._emit(); };
-    byId('show_legend').onchange = (e) => { this._config.show_legend = !!e.target.checked; this._emit(); };
-    byId('circuits').oninput = (e) => { this._config.features.circuits = Number(e.target.value || 0); this._emit(); };
-    for (const key of ['solar','heat_pump','hot_water','smart_grid']) {
-      const el = byId(`f-${key}`);
-      if (el) el.onchange = (e) => { this._config.features[key] = !!e.target.checked; this._emit(); };
-    }
-    for (const key of ['outdoor_temperature','hot_water_temperature','flow_rate','pump_speed','boiler_temperature']) {
-      const el = byId(`e-${key}`);
-      if (el) el.oninput = (e) => { this._config.entities[key] = e.target.value; this._emit(); };
-    }
-  }
-
-  _checkbox(id, value, label) {
-    return `
-      <div class="row">
-        <label>${label}</label>
-        <input id="f-${id}" type="checkbox" ${value ? 'checked' : ''} />
-      </div>`;
-  }
-
-  _text(id, value, placeholder) {
-    return `
-      <div class="row">
-        <label>${id}</label>
-        <input id="e-${id}" type="text" value="${value || ''}" placeholder="${placeholder}" />
-      </div>`;
-  }
-}
-
-customElements.define('solvis-card-editor', SolvisCardEditor);
-
 // Register for HA card picker
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -374,14 +327,14 @@ window.customCards.push({
 });
 
 window.customCards.push({
-  type: 'solvis-card',
+  type: 'solvis-card-heating',
   name: 'Solvis Heating Card',
   description: 'Heating-focused view for Solvis systems.',
   preview: true,
 });
 
 window.customCards.push({
-  type: 'solvis-card',
+  type: 'solvis-card-hot-water',
   name: 'Solvis Hot Water Card',
   description: 'Hot water production view for Solvis systems.',
   preview: true,
