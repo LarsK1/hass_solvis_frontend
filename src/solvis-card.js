@@ -23,6 +23,16 @@ const DEFAULT_CONFIG = {
     flow_rate: '',
     pump_speed: '',
     boiler_temperature: '',
+    hot_water_priority: '',
+    ww_target_temp: '',
+    ww_current_temp: '',
+    ww_flow_rate: '',
+    ww_pump_speed: '',
+    ww_buffer_temp: '',
+    cw_temp: '',
+    circulation_mode: '',
+    circulation_temp: '',
+    circulation_pump: '',
   },
 };
 
@@ -127,6 +137,16 @@ class SolvisCard extends HTMLElement {
             { name: 'flow_rate', selector: { entity: {} } },
             { name: 'pump_speed', selector: { entity: {} } },
             { name: 'boiler_temperature', selector: { entity: {} } },
+            { name: 'hot_water_priority', selector: { entity: {} } },
+            { name: 'ww_target_temp', selector: { entity: {} } },
+            { name: 'ww_current_temp', selector: { entity: {} } },
+            { name: 'ww_flow_rate', selector: { entity: {} } },
+            { name: 'ww_pump_speed', selector: { entity: {} } },
+            { name: 'ww_buffer_temp', selector: { entity: {} } },
+            { name: 'cw_temp', selector: { entity: {} } },
+            { name: 'circulation_mode', selector: { entity: {} } },
+            { name: 'circulation_temp', selector: { entity: {} } },
+            { name: 'circulation_pump', selector: { entity: {} } },
           ],
         },
       ],
@@ -154,6 +174,16 @@ class SolvisCard extends HTMLElement {
       flowRate: read(e.flow_rate, '10.7'),
       pumpSpeed: read(e.pump_speed, this._state.pumpOn ? '60' : '0'),
       boiler: read(e.boiler_temperature, '42.7'),
+      wwPriority: read(e.hot_water_priority, 'Normal'),
+      wwTarget: read(e.ww_target_temp, '50.0'),
+      wwCurrent: read(e.ww_current_temp, read(e.hot_water_temperature, '48.5')),
+      wwFlow: read(e.ww_flow_rate, '0.0'),
+      wwPump: read(e.ww_pump_speed, '0'),
+      wwBuffer: read(e.ww_buffer_temp, '52.0'),
+      cwTemp: read(e.cw_temp, '12.0'),
+      circMode: read(e.circulation_mode, '0'),
+      circTemp: read(e.circulation_temp, '40.0'),
+      circPump: read(e.circulation_pump, 'off'),
     };
   }
 
@@ -232,9 +262,64 @@ class SolvisCard extends HTMLElement {
       </g>
     `).join('') : '';
 
+    const circModeMap = {
+      '0': 'Aus',
+      '1': 'Puls',
+      '2': 'Zeit',
+      '3': 'Puls/Zeit'
+    };
+    const circModeLabel = circModeMap[String(V.circMode)] || V.circMode;
+
     const hotWater = (features.hot_water && showHotWater) ? `
-      <path d="M 230 30 L 230 15 L 120 15" fill="none" stroke="#e74c3c" stroke-width="3"/>
-      ${wi('Warmwasser', Number(V.hotWater).toFixed(1), '°C', 80, 15)}
+      <!-- Pipes with rounded corners -->
+      <!-- Red: Hot Water -->
+      <path d="M 230 40 L 230 25 Q 230 15 220 15 L 70 15 Q 60 15 60 25 L 60 45" fill="none" stroke="#e74c3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      
+      <!-- Purple: Circulation -->
+      <path d="M 60 35 L 25 35 Q 15 35 15 45 L 15 185 Q 15 195 25 195 L 180 195" fill="none" stroke="#9b59b6" stroke-width="2" stroke-dasharray="4,2" stroke-linecap="round" stroke-linejoin="round"/>
+      
+      <!-- Blue: Cold Water -->
+      <path d="M 10 205 L 165 205 Q 175 205 175 195 L 175 70 Q 175 60 185 60" fill="none" stroke="#3498db" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Tap Icon -->
+      <g transform="translate(45, 45)">
+        <path d="M 0 0 Q 10 0 15 5 L 15 12" fill="none" stroke="#7f8c8d" stroke-width="4" stroke-linecap="round" />
+        <path d="M -2 -4 L 8 0" stroke="#95a5a6" stroke-width="3" stroke-linecap="round" />
+        ${Number(V.wwFlow) > 0 ? `
+          <path d="M 15 15 L 15 35" stroke="#3498db" stroke-width="3" stroke-dasharray="3,1">
+             <animate attributeName="stroke-dashoffset" from="4" to="0" dur="0.2s" repeatCount="indefinite" />
+          </path>
+        ` : ''}
+      </g>
+
+      <!-- Labels & Values -->
+      <g font-family="sans-serif">
+        <text x="75" y="30" font-size="12" font-weight="bold" fill="#e74c3c">${Number(V.wwCurrent).toFixed(1)}°C</text>
+        ${Number(V.wwFlow) > 0 ? `<text x="75" y="44" font-size="10" fill="#555">${V.wwFlow} l/m</text>` : ''}
+        
+        <text x="25" y="165" font-size="11" fill="#3498db" font-weight="bold">${Number(V.cwTemp).toFixed(1)}°C</text>
+        <text x="25" y="178" font-size="9" fill="#777">Kaltwasser</text>
+
+        <text x="22" y="110" font-size="10" fill="#9b59b6" transform="rotate(-90 22 110)" text-anchor="middle" font-weight="bold">${Number(V.circTemp).toFixed(1)}°C</text>
+      </g>
+      
+      <!-- Animations on lines -->
+      ${Number(V.wwFlow) > 0 ? `
+        <circle r="3" fill="#e74c3c"><animateMotion dur="2s" repeatCount="indefinite" path="M 230 40 L 230 25 Q 230 15 220 15 L 70 15 Q 60 15 60 25 L 60 45" /></circle>
+      ` : ''}
+      ${(String(V.circPump).toLowerCase() === 'on' || V.circPump === '1' || V.circPump === true) ? `
+        <circle r="2.5" fill="#9b59b6"><animateMotion dur="3s" repeatCount="indefinite" path="M 60 35 L 25 35 Q 15 35 15 45 L 15 185 Q 15 195 25 195 L 180 195" /></circle>
+      ` : ''}
+
+      <!-- Status Info Box -->
+      <g transform="translate(80, 75)">
+        <rect x="0" y="0" width="85" height="60" rx="4" fill="rgba(255,255,255,0.9)" stroke="#ccc" stroke-width="0.5"/>
+        <text x="5" y="12" font-size="9" fill="#333" font-weight="bold">Warmwasser</text>
+        <text x="5" y="23" font-size="8" fill="#555">Soll: ${V.wwTarget}°C</text>
+        <text x="5" y="33" font-size="8" fill="#555">Prio: ${V.wwPriority}</text>
+        <text x="5" y="43" font-size="8" fill="#555">Zirk: ${circModeLabel}</text>
+        <text x="5" y="53" font-size="8" fill="#555">Pumpe: ${V.wwPump}%</text>
+      </g>
     ` : '';
 
     const smartGrid = (features.smart_grid && showHeating)
@@ -285,7 +370,9 @@ class SolvisCard extends HTMLElement {
                 ${heatPump}
                 ${radiatorIcons}
                 ${hotWater}
-                ${wi('Speicher', Number(V.boiler).toFixed(1), '°C', 230, 80)}
+                ${(features.hot_water && showHotWater)
+                  ? wi('Oben', Number(V.boiler).toFixed(1), '°C', 230, 75) + wi('Unten', Number(V.wwBuffer).toFixed(1), '°C', 230, 125)
+                  : wi('Speicher', Number(V.boiler).toFixed(1), '°C', 230, 100)}
                 ${showHeating ? wi('Vorlauf', Number(V.flowRate).toFixed(1), ' l/m', 330, 100) : ''}
               </svg>
               ${show_legend ? `
