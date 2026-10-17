@@ -16,6 +16,7 @@ jobs:
     outputs:
       pr: ${{ steps.rp.outputs.pr }}
       release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
       - name: Run release-please (manifest)
         id: rp
@@ -113,3 +114,27 @@ jobs:
           else
             echo "No header changes to commit."
           fi
+
+  upload-release-asset:
+    name: Attach solvis-card.js to the release
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      # HACS installs only the single file named in hacs.json and prefers a release
+      # asset of that name. The file in the repository root is just a loader that
+      # imports ./src/solvis-card.js, which HACS does not copy, so the asset has to
+      # be the self-contained implementation from src/ (it has no further imports).
+      - name: Upload self-contained card as release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp src/solvis-card.js solvis-card.js
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" solvis-card.js --clobber
